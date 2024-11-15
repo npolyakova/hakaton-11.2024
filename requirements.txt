@@ -1,0 +1,9 @@
+python-telegram-bot==20.0
+pytelegrambotapi
+aiogram
+betterconf
+pandas
+plotly
+dash_mantine_components
+dash_express
+jupyter-dash
