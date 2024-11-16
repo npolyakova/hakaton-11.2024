@@ -1,23 +1,64 @@
-import asyncio
-import logging
-
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums.parse_mode import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
-
 from settings import token
-from handlers import router
+import asyncio
 
-async def main():
-    bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(router)
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
+                           Message,  BotCommand, BotCommandScopeDefault)
+from aiogram.filters import CommandStart
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+class TelegramBot:
+    def __init__(self, bot: Bot, dp: Dispatcher):
+        self.bot = bot
+        self.dp = dp
+        self.keyboard = self.create_keyboard()
 
+    @staticmethod
+    def create_keyboard():
+        keyboard: list[KeyboardButton] = [
+            KeyboardButton(text="Текущий спринт"),
+            KeyboardButton(text="Выберите спринт")
+        ]
+
+        # Инициализируем билдер
+        builder = ReplyKeyboardBuilder()
+
+        builder.row(*keyboard)
+
+        # Создаем объект клавиатуры, добавляя в него кнопки
+        my_keyboard: ReplyKeyboardMarkup = builder.as_markup(
+            resize_keyboard=True
+        )
+
+        return my_keyboard
+
+    async def set_menu_commands(self):
+        commands = [
+            BotCommand(command="/start", description="Начать"),
+        ]
+        await self.bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+
+    def register_handlers(self):
+        self.dp.message.register(self.process_start_command, CommandStart())
+
+    async def process_start_command(self, message: Message):
+        await message.answer(
+            text='Выберите спринт',
+            reply_markup=self.keyboard)
+
+    async def run(self):
+        self.register_handlers()
+        await self.set_menu_commands()
+
+        await self.bot.delete_webhook(drop_pending_updates=True)
+        await self.dp.start_polling(BOT)
+        await self.bot.session.close()
+
+
+if __name__ == '__main__':
+    BOT = Bot(token)
+    DP = Dispatcher()
+
+    telegram_bot = TelegramBot(BOT, DP)
+    asyncio.run(telegram_bot.run())
